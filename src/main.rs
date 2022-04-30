@@ -21,7 +21,9 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
+const VALIDATION_LAYERS: [&str; 1] = [
+    /*"VK_LAYER_KHRONOS_validation"*/ "VK_LAYER_LUNARG_api_dump",
+];
 
 #[cfg(all(debug_assertions))]
 const ENABLE_VALIDATION: bool = true;
@@ -507,7 +509,7 @@ impl HelloTriangle {
             } => {
                 println!("Resize");
             }
-            Event::RedrawRequested(..) => {
+            Event::MainEventsCleared => {
                 self.draw_frame();
             }
             _ => (),
