@@ -22,7 +22,7 @@ use winit::{
 };
 
 const VALIDATION_LAYERS: [&str; 1] = [
-    /*"VK_LAYER_KHRONOS_validation"*/ "VK_LAYER_LUNARG_api_dump",
+    "VK_LAYER_KHRONOS_validation", /* "VK_LAYER_LUNARG_api_dump", */
 ];
 
 #[cfg(all(debug_assertions))]
@@ -471,7 +471,7 @@ impl HelloTriangle {
             self.swapchain.framebuffers.get(image_i).unwrap().clone(),
         );
 
-        let execution = acquire_future
+        let draw_and_present = acquire_future
             .then_execute(self.graphics_q.clone(), command_buffer.clone())
             .unwrap()
             .then_signal_semaphore()
@@ -479,18 +479,30 @@ impl HelloTriangle {
                 self.surface_q.clone(),
                 self.swapchain.swapchain.clone(),
                 image_i,
-            )
-            .then_signal_fence_and_flush();
+            );
+        match draw_and_present.flush() {
+            Err(FlushError::OutOfDate) => {
+                println!("Out of date!");
+                unsafe {
+                    draw_and_present.signal_finished();
+                }
+                return;
+            }
+            Err(e) => {
+                println!("{:?}", e);
+            }
+            Ok(()) => (),
+        };
 
-        match execution {
+        match draw_and_present.then_signal_fence_and_flush() {
             Ok(future) => {
                 future.wait(None).unwrap();
             }
             Err(FlushError::OutOfDate) => {
-                println!("Out of date!");
+                println!("Fence - Out of date!");
             }
             Err(e) => {
-                println!("Failed to flush future: {:?}", e);
+                println!("Fence - Failed to flush future: {:?}", e);
             }
         }
     }
