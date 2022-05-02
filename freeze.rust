@@ -1,0 +1,30 @@
+        let command_buffer = Self::record_command_buffer(
+            &self.device,
+            &self.graphics_q,
+            &self.pipeline,
+            self.swapchain.framebuffers.get(image_i).unwrap().clone(),
+        );
+
+        let execution = acquire_future
+            .then_execute(self.graphics_q.clone(), command_buffer.clone())
+            .unwrap()
+            .then_signal_semaphore()
+            .then_swapchain_present(
+                self.surface_q.clone(),
+                self.swapchain.swapchain.clone(),
+                image_i,
+            )
+            .then_signal_fence_and_flush();
+
+        match execution {
+            Ok(future) => {
+                future.wait(None).unwrap();
+            }
+            Err(FlushError::OutOfDate) => {
+                println!("Out of date!");
+            }
+            Err(e) => {
+                println!("Failed to flush future: {:?}", e);
+            }
+        }
+

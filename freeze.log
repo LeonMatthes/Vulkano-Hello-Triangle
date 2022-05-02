@@ -1,0 +1,254 @@
+Thread 0, Frame 297:
+vkQueuePresentKHR(queue, pPresentInfo) returns VkResult VK_SUCCESS (0):
+    queue:                          VkQueue = 0x55e3647b96b0
+    pPresentInfo:                   const VkPresentInfoKHR* = 0x7ffcacd21d18:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR (1000001001)
+        pNext:                          const void* = NULL
+        waitSemaphoreCount:             uint32_t = 1
+        pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd244f8
+            pWaitSemaphores[0]:             const VkSemaphore = 0x55e3650722a0
+        swapchainCount:                 uint32_t = 1
+        pSwapchains:                    const VkSwapchainKHR* = 0x7ffcacd24548
+            pSwapchains[0]:                 const VkSwapchainKHR = 0x55e364c75800
+        pImageIndices:                  const uint32_t* = 0x7ffcacd24574
+            pImageIndices[0]:               const uint32_t = 0
+        pResults:                       VkResult* = 0x55e36506f5f0
+            pResults[0]:                    VkResult = VK_SUCCESS (0)
+
+Thread 0, Frame 298:
+vkQueueSubmit(queue, submitCount, pSubmits, fence) returns VkResult VK_SUCCESS (0):
+    queue:                          VkQueue = 0x55e3647b96b0
+    submitCount:                    uint32_t = 1
+    pSubmits:                       const VkSubmitInfo* = 0x7ffcacd21db8
+        pSubmits[0]:                    const VkSubmitInfo = 0x7ffcacd21db8:
+            sType:                          VkStructureType = VK_STRUCTURE_TYPE_SUBMIT_INFO (4)
+            pNext:                          const void* = NULL
+            waitSemaphoreCount:             uint32_t = 0
+            pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd247d0
+            pWaitDstStageMask:              const VkPipelineStageFlags* = 0x7ffcacd2485c
+            commandBufferCount:             uint32_t = 0
+            pCommandBuffers:                const VkCommandBuffer* = 0x7ffcacd24920
+            signalSemaphoreCount:           uint32_t = 0
+            pSignalSemaphores:              const VkSemaphore* = 0x7ffcacd24890
+    fence:                          VkFence = 0x55e365103020
+
+Thread 0, Frame 298:
+vkWaitForFences(device, fenceCount, pFences, waitAll, timeout) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    fenceCount:                     uint32_t = 1
+    pFences:                        const VkFence* = 0x7ffcacd25390
+        pFences[0]:                     const VkFence = 0x55e365103020
+    waitAll:                        VkBool32 = 1
+    timeout:                        uint64_t = 18446744073709551615
+
+Thread 0, Frame 298:
+vkWaitForFences(device, fenceCount, pFences, waitAll, timeout) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    fenceCount:                     uint32_t = 1
+    pFences:                        const VkFence* = 0x7ffcacd252e0
+        pFences[0]:                     const VkFence = 0x55e364b42ea0
+    waitAll:                        VkBool32 = 1
+    timeout:                        uint64_t = 18446744073709551615
+
+Thread 0, Frame 298:
+vkDestroyCommandPool(device, commandPool, pAllocator) returns void:
+    device:                         VkDevice = 0x55e364c7ae60
+    commandPool:                    VkCommandPool = 0x55e364c484f0
+    pAllocator:                     const VkAllocationCallbacks* = NULL
+
+Thread 0, Frame 298:
+vkResetFences(device, fenceCount, pFences) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    fenceCount:                     uint32_t = 1
+    pFences:                        const VkFence* = 0x7ffcacd24ee8
+        pFences[0]:                     const VkFence = 0x55e364b42ea0
+
+Thread 0, Frame 298:
+vkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    swapchain:                      VkSwapchainKHR = 0x55e364c75800
+    timeout:                       uint64_t = 18446744073709551615
+    semaphore:                      VkSemaphore = 0x55e3650722a0
+    fence:                          VkFence = 0x55e364b42ea0
+    pImageIndex:                    uint32_t* = 1
+
+Thread 0, Frame 298:
+vkCreateCommandPool(device, pCreateInfo, pAllocator, pCommandPool) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    pCreateInfo:                    const VkCommandPoolCreateInfo* = 0x7ffcacd1f2c0:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO (39)
+        pNext:                          const void* = NULL
+        flags:                          VkCommandPoolCreateFlags = 2 (VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+        queueFamilyIndex:               uint32_t = 0
+    pAllocator:                     const VkAllocationCallbacks* = NULL
+    pCommandPool:                   VkCommandPool* = 0x55e364c484f0
+
+Thread 0, Frame 298:
+vkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    pAllocateInfo:                  const VkCommandBufferAllocateInfo* = 0x7ffcacd1f3d8:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO (40)
+        pNext:                          const void* = NULL
+        commandPool:                    VkCommandPool = 0x55e364c484f0
+        level:                          VkCommandBufferLevel = VK_COMMAND_BUFFER_LEVEL_PRIMARY (0)
+        commandBufferCount:             uint32_t = 1
+    pCommandBuffers:                VkCommandBuffer* = 0x55e364c45290
+        pCommandBuffers[0]:             VkCommandBuffer = 0x55e3650f8cf0
+
+Thread 0, Frame 298:
+vkBeginCommandBuffer(commandBuffer, pBeginInfo) returns VkResult VK_SUCCESS (0):
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+    pBeginInfo:                     const VkCommandBufferBeginInfo* = 0x7ffcacd1f810:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO (42)
+        pNext:                          const void* = NULL
+        flags:                          VkCommandBufferUsageFlags = 1 (VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT)
+        pInheritanceInfo:               const VkCommandBufferInheritanceInfo* = UNUSED
+
+Thread 0, Frame 298:
+vkCmdBeginRenderPass2(commandBuffer, pRenderPassBegin, pSubpassBeginInfo) returns void:
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+    pRenderPassBegin:               const VkRenderPassBeginInfo* = 0x7ffcacd21bf8:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO (43)
+        pNext:                          const void* = NULL
+        renderPass:                     VkRenderPass = 0x55e364b40d50
+        framebuffer:                    VkFramebuffer = 0x55e36506a0a0
+        renderArea:                     VkRect2D = 0x7ffcacd21c18:
+            offset:                         VkOffset2D = 0x7ffcacd21c18:
+                x:                              int32_t = 0
+                y:                              int32_t = 0
+            extent:                         VkExtent2D = 0x7ffcacd21c20:
+                width:                          uint32_t = 1280
+                height:                         uint32_t = 720
+        clearValueCount:                uint32_t = 1
+        pClearValues:                   const VkClearValue* = 0x7ffcacd21b5c
+            pClearValues[0]:                const VkClearValue = 0x7ffcacd21b5c (Union):
+                color:                          VkClearColorValue = 0x7ffcacd21b5c (Union):
+                    float32:                        float[4] = 0x7ffcacd21b5c
+                        float32[0]:                     float = 0
+                        float32[1]:                     float = 0
+                        float32[2]:                     float = 1
+                        float32[3]:                     float = 1
+                    int32:                          int32_t[4] = 0x7ffcacd21b5c
+                        int32[0]:                       int32_t = 0
+                        int32[1]:                       int32_t = 0
+                        int32[2]:                       int32_t = 1065353216
+                        int32[3]:                       int32_t = 1065353216
+                    uint32:                         uint32_t[4] = 0x7ffcacd21b5c
+                        uint32[0]:                      uint32_t = 0
+                        uint32[1]:                      uint32_t = 0
+                        uint32[2]:                      uint32_t = 1065353216
+                        uint32[3]:                      uint32_t = 1065353216
+                depthStencil:                   VkClearDepthStencilValue = 0x7ffcacd21b5c:
+                    depth:                          float = 0
+                    stencil:                        uint32_t = 0
+    pSubpassBeginInfo:              const VkSubpassBeginInfo* = 0x7ffcacd21c98:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO (1000109005)
+        pNext:                          const void* = NULL
+        contents:                       VkSubpassContents = VK_SUBPASS_CONTENTS_INLINE (0)
+
+Thread 0, Frame 298:
+vkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline) returns void:
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+    pipelineBindPoint:              VkPipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS (0)
+    pipeline:                       VkPipeline = 0x55e36506e000
+
+Thread 0, Frame 298:
+vkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance) returns void:
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+    vertexCount:                    uint32_t = 3
+    instanceCount:                  uint32_t = 1
+    firstVertex:                    uint32_t = 0
+    firstInstance:                  uint32_t = 0
+
+Thread 0, Frame 298:
+vkCmdEndRenderPass2(commandBuffer, pSubpassEndInfo) returns void:
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+    pSubpassEndInfo:                const VkSubpassEndInfo* = 0x7ffcacd21dd0:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO (1000109006)
+        pNext:                          const void* = NULL
+
+Thread 0, Frame 298:
+vkEndCommandBuffer(commandBuffer) returns VkResult VK_SUCCESS (0):
+    commandBuffer:                  VkCommandBuffer = 0x55e3650f8cf0
+
+Thread 0, Frame 298:
+vkResetFences(device, fenceCount, pFences) returns VkResult VK_SUCCESS (0):
+    device:                         VkDevice = 0x55e364c7ae60
+    fenceCount:                     uint32_t = 1
+    pFences:                        const VkFence* = 0x7ffcacd24a98
+        pFences[0]:                     const VkFence = 0x55e365103020
+
+Thread 0, Frame 298:
+vkQueueSubmit(queue, submitCount, pSubmits, fence) returns VkResult VK_SUCCESS (0):
+    queue:                          VkQueue = 0x55e3647b96b0
+    submitCount:                    uint32_t = 1
+    pSubmits:                       const VkSubmitInfo* = 0x7ffcacd1d9c8
+        pSubmits[0]:                    const VkSubmitInfo = 0x7ffcacd1d9c8:
+            sType:                          VkStructureType = VK_STRUCTURE_TYPE_SUBMIT_INFO (4)
+            pNext:                          const void* = NULL
+            waitSemaphoreCount:             uint32_t = 1
+            pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd1efd8
+                pWaitSemaphores[0]:             const VkSemaphore = 0x55e3650722a0
+            pWaitDstStageMask:              const VkPipelineStageFlags* = 0x7ffcacd1f064
+                pWaitDstStageMask[0]:           const VkPipelineStageFlags = 65536 (VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)
+            commandBufferCount:             uint32_t = 1
+            pCommandBuffers:                const VkCommandBuffer* = 0x7ffcacd1f128
+                pCommandBuffers[0]:             const VkCommandBuffer = 0x55e3650f8cf0
+            signalSemaphoreCount:           uint32_t = 1
+            pSignalSemaphores:              const VkSemaphore* = 0x7ffcacd1f098
+                pSignalSemaphores[0]:           const VkSemaphore = 0x55e365102ec0
+    fence:                          VkFence = 0
+
+Thread 0, Frame 298:
+vkQueuePresentKHR(queue, pPresentInfo) returns VkResult VK_ERROR_OUT_OF_DATE_KHR (-1000001004):
+    queue:                          VkQueue = 0x55e3647b96b0
+    pPresentInfo:                   const VkPresentInfoKHR* = 0x7ffcacd21d18:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR (1000001001)
+        pNext:                          const void* = NULL
+        waitSemaphoreCount:             uint32_t = 1
+        pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd244f8
+            pWaitSemaphores[0]:             const VkSemaphore = 0x55e365102ec0
+        swapchainCount:                 uint32_t = 1
+        pSwapchains:                    const VkSwapchainKHR* = 0x7ffcacd24548
+            pSwapchains[0]:                 const VkSwapchainKHR = 0x55e364c75800
+        pImageIndices:                  const uint32_t* = 0x7ffcacd24574
+            pImageIndices[0]:               const uint32_t = 1
+        pResults:                       VkResult* = 0x55e36506f5f0
+            pResults[0]:                    VkResult = VK_ERROR_OUT_OF_DATE_KHR (-1000001004)
+
+Thread 0, Frame 299:
+vkQueuePresentKHR(queue, pPresentInfo) returns VkResult VK_ERROR_OUT_OF_DATE_KHR (-1000001004):
+    queue:                          VkQueue = 0x55e3647b96b0
+    pPresentInfo:                   const VkPresentInfoKHR* = 0x7ffcacd219c8:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR (1000001001)
+        pNext:                          const void* = NULL
+        waitSemaphoreCount:             uint32_t = 1
+        pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd241a8
+            pWaitSemaphores[0]:             const VkSemaphore = 0x55e365102ec0
+        swapchainCount:                 uint32_t = 1
+        pSwapchains:                    const VkSwapchainKHR* = 0x7ffcacd241f8
+            pSwapchains[0]:                 const VkSwapchainKHR = 0x55e364c75800
+        pImageIndices:                  const uint32_t* = 0x7ffcacd24224
+            pImageIndices[0]:               const uint32_t = 1
+        pResults:                       VkResult* = 0x55e36506f5f0
+            pResults[0]:                    VkResult = VK_ERROR_OUT_OF_DATE_KHR (-1000001004)
+
+Thread 0, Frame 300:
+vkQueuePresentKHR(queue, pPresentInfo) returns VkResult VK_ERROR_OUT_OF_DATE_KHR (-1000001004):
+    queue:                          VkQueue = 0x55e3647b96b0
+    pPresentInfo:                   const VkPresentInfoKHR* = 0x7ffcacd23948:
+        sType:                          VkStructureType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR (1000001001)
+        pNext:                          const void* = NULL
+        waitSemaphoreCount:             uint32_t = 1
+        pWaitSemaphores:                const VkSemaphore* = 0x7ffcacd24a28
+            pWaitSemaphores[0]:             const VkSemaphore = 0x55e365102ec0
+        swapchainCount:                 uint32_t = 1
+        pSwapchains:                    const VkSwapchainKHR* = 0x7ffcacd24a78
+            pSwapchains[0]:                 const VkSwapchainKHR = 0x55e364c75800
+        pImageIndices:                  const uint32_t* = 0x7ffcacd24aa4
+            pImageIndices[0]:               const uint32_t = 1
+        pResults:                       VkResult* = 0x55e36506f5f0
+            pResults[0]:                    VkResult = VK_ERROR_OUT_OF_DATE_KHR (-1000001004)
+
+Thread 0, Frame 301:
+vkQueueWaitIdle(queue) returns VkResult^C 
