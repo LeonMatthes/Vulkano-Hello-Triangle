@@ -1,7 +1,9 @@
 use smallvec::smallvec;
-use std::sync::Arc;
+use std::{iter, sync::Arc};
 use vulkano::{
-    command_buffer::PrimaryAutoCommandBuffer,
+    command_buffer::{
+        pool::standard::*, synced::*, PrimaryAutoCommandBuffer, PrimaryCommandBuffer,
+    },
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType, QueueFamily},
         Device, DeviceExtensions, Queue,
@@ -12,23 +14,28 @@ use vulkano::{
     render_pass::{Framebuffer, FramebufferCreateInfo, RenderPass},
     shader::ShaderModule,
     swapchain::*,
+    sync::*,
 };
 use vulkano_win::VkSurfaceBuild;
 use winit::{
-    dpi::{LogicalSize, PhysicalSize},
+    dpi::LogicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
 
-const VALIDATION_LAYERS: [&str; 1] = [
-    "VK_LAYER_KHRONOS_validation", /* "VK_LAYER_LUNARG_api_dump", */
-];
+// const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
+
+const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_LUNARG_api_dump"];
+
+// const VALIDATION_LAYERS: [&str; 0] = [];
 
 #[cfg(all(debug_assertions))]
 const ENABLE_VALIDATION: bool = true;
 #[cfg(not(debug_assertions))]
 const ENABLE_VALIDATION: bool = false;
+
+const FRAMES_IN_FLIGHT: usize = 2;
 
 const DEVICE_EXTENSIONS: DeviceExtensions = DeviceExtensions {
     khr_swapchain: true,
@@ -37,33 +44,28 @@ const DEVICE_EXTENSIONS: DeviceExtensions = DeviceExtensions {
 
 struct SwapchainData {
     swapchain: Arc<Swapchain<Window>>,
-    images: Vec<Arc<SwapchainImage<Window>>>,
+    _images: Vec<Arc<SwapchainImage<Window>>>,
     framebuffers: Vec<Arc<Framebuffer>>,
 }
 
+struct FrameInFlight {
+    command_buffer: Option<PrimaryAutoCommandBuffer>,
+    fence: Option<Fence>,
+    acquire_semaphore: Semaphore,
+    draw_semaphore: Semaphore,
+}
+
 struct HelloTriangle {
-    instance: Arc<Instance>,
+    frames_in_flight: Vec<FrameInFlight>,
+    current_frame: usize,
+
+    _instance: Arc<Instance>,
     device: Arc<Device>,
     swapchain: SwapchainData,
-    render_pass: Arc<RenderPass>,
+    _render_pass: Arc<RenderPass>,
     graphics_q: Arc<Queue>,
     surface_q: Arc<Queue>,
     pipeline: Arc<GraphicsPipeline>,
-}
-
-mod shaders {
-    vulkano_shaders::shader! {
-        shaders: {
-            vertex: {
-                ty: "vertex",
-                path: "shaders/vertex.glsl",
-            },
-            fragment: {
-                ty: "fragment",
-                path: "shaders/fragment.glsl",
-            }
-        }
-    }
 }
 
 impl HelloTriangle {
@@ -78,16 +80,30 @@ impl HelloTriangle {
             Self::create_graphics_pipeline(device.clone(), swapchain.clone(), render_pass.clone());
         let framebuffers = Self::create_framebuffers(&swapchain, &render_pass, &images);
 
+        let frames_in_flight = iter::from_fn(|| {
+            Some(FrameInFlight {
+                command_buffer: None,
+                fence: None,
+                acquire_semaphore: Semaphore::from_pool(device.clone()).unwrap(),
+                draw_semaphore: Semaphore::from_pool(device.clone()).unwrap(),
+            })
+        })
+        .take(FRAMES_IN_FLIGHT)
+        .collect();
+
         (
             Self {
-                instance,
+                frames_in_flight,
+                current_frame: 0,
+
+                _instance: instance,
                 device,
                 swapchain: SwapchainData {
                     swapchain,
-                    images,
+                    _images: images,
                     framebuffers,
                 },
-                render_pass,
+                _render_pass: render_pass,
                 graphics_q,
                 surface_q,
                 pipeline,
@@ -416,7 +432,7 @@ impl HelloTriangle {
         queue: &Arc<Queue>,
         pipeline: &Arc<GraphicsPipeline>,
         framebuffer: Arc<Framebuffer>,
-    ) -> Arc<PrimaryAutoCommandBuffer> {
+    ) -> PrimaryAutoCommandBuffer {
         use vulkano::command_buffer::{
             AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents,
         };
@@ -441,69 +457,128 @@ impl HelloTriangle {
             .end_render_pass()
             .unwrap();
 
-        Arc::new(builder.build().unwrap())
+        builder.build().unwrap()
     }
 
+    // unsafe fn record_command_buffer(
+    //     pipeline: &Arc<GraphicsPipeline>,
+    //     framebuffer: Arc<Framebuffer>,
+    //     pool: &Arc<StandardCommandPool>,
+    // ) -> (StandardCommandPoolAlloc, Arc<SyncCommandBuffer>) {
+    //     use vulkano::command_buffer::{
+    //         pool::*, synced::*, sys::*, CommandBufferLevel, CommandBufferUsage, SubpassContents,
+    //     };
+
+    //     let pool_builder_alloc = pool
+    //         .allocate(CommandBufferLevel::Primary, 1)
+    //         .unwrap()
+    //         .next()
+    //         .unwrap();
+    //     let mut builder = SyncCommandBufferBuilder::new(
+    //         &pool_builder_alloc.inner(),
+    //         CommandBufferBeginInfo {
+    //             usage: CommandBufferUsage::OneTimeSubmit,
+    //             ..Default::default()
+    //         },
+    //     )
+    //     .unwrap();
+
+    //     builder
+    //         .begin_render_pass(
+    //             RenderPassBeginInfo {
+    //                 clear_values: vec![[0.0, 0.0, 1.0, 1.0].into()],
+    //                 ..RenderPassBeginInfo::framebuffer(framebuffer.clone())
+    //             },
+    //             SubpassContents::Inline,
+    //         )
+    //         .unwrap();
+    //     builder.bind_pipeline_graphics(pipeline.clone());
+    //     builder.draw(3, 1, 0, 0);
+    //     builder.end_render_pass();
+
+    //     (
+    //         pool_builder_alloc.into_alloc(),
+    //         Arc::new(builder.build().unwrap()),
+    //     )
+    // }
+
     pub fn draw_frame(&mut self) {
-        use vulkano::{
-            swapchain, sync,
-            sync::{FlushError, GpuFuture},
-        };
+        use vulkano::{command_buffer::submit::*, swapchain, sync::*};
 
-        let (image_i, suboptimal, acquire_future) =
-            match swapchain::acquire_next_image(self.swapchain.swapchain.clone(), None) {
-                Ok(r) => r,
-                Err(AcquireError::OutOfDate) => {
-                    println!("Out of Date!");
-                    return;
-                }
-                Err(e) => panic!("Failed to acquire next image: {:?}", e),
-            };
+        let frame = &mut self.frames_in_flight[self.current_frame];
 
-        if suboptimal {
-            println!("Suboptimal");
+        if let Some(ref mut fence) = &mut frame.fence {
+            fence.wait(None).unwrap();
+            fence.reset().unwrap();
+            frame.command_buffer.take();
+        } else {
+            frame.fence = Some(Fence::from_pool(self.device.clone()).unwrap());
         }
 
-        let command_buffer = Self::record_command_buffer(
-            &self.device,
-            &self.graphics_q,
-            &self.pipeline,
-            self.swapchain.framebuffers.get(image_i).unwrap().clone(),
-        );
-
-        let draw_and_present = acquire_future
-            .then_execute(self.graphics_q.clone(), command_buffer.clone())
-            .unwrap()
-            .then_signal_semaphore()
-            .then_swapchain_present(
-                self.surface_q.clone(),
-                self.swapchain.swapchain.clone(),
-                image_i,
-            );
-        match draw_and_present.flush() {
-            Err(FlushError::OutOfDate) => {
-                println!("Out of date!");
-                unsafe {
-                    draw_and_present.signal_finished();
+        unsafe {
+            let acquired = match swapchain::acquire_next_image_raw(
+                &*self.swapchain.swapchain,
+                None,
+                Some(&frame.acquire_semaphore),
+                None,
+            ) {
+                Ok(acquired) => acquired,
+                Err(AcquireError::OutOfDate) => {
+                    println!("out of date!");
+                    // no use waiting for this frame.
+                    frame.fence.take();
+                    return;
                 }
-                return;
-            }
-            Err(e) => {
-                println!("{:?}", e);
-            }
-            Ok(()) => (),
-        };
+                Err(e) => {
+                    println!("Err: {:?}", e);
+                    frame.fence.take();
+                    return;
+                }
+            };
 
-        match draw_and_present.then_signal_fence_and_flush() {
-            Ok(future) => {
-                future.wait(None).unwrap();
+            if acquired.suboptimal {
+                println!("Suboptimal");
             }
-            Err(FlushError::OutOfDate) => {
-                println!("Fence - Out of date!");
+
+            let command_buffer = Self::record_command_buffer(
+                &self.device.clone(),
+                &self.graphics_q.clone(),
+                &self.pipeline,
+                self.swapchain
+                    .framebuffers
+                    .get(acquired.id)
+                    .unwrap()
+                    .clone(),
+            );
+
+            let mut queue_submit = SubmitCommandBufferBuilder::new();
+            queue_submit.add_wait_semaphore(
+                &frame.acquire_semaphore,
+                PipelineStages {
+                    fragment_shader: true,
+                    ..PipelineStages::none()
+                },
+            );
+            queue_submit.add_command_buffer(command_buffer.inner());
+            queue_submit.add_signal_semaphore(&frame.draw_semaphore);
+            queue_submit.set_fence_signal(frame.fence.as_ref().unwrap());
+            queue_submit.submit(&*self.graphics_q).unwrap();
+
+            let mut queue_present = SubmitPresentBuilder::new();
+            queue_present.add_wait_semaphore(&frame.draw_semaphore);
+            queue_present.add_swapchain(&*self.swapchain.swapchain, acquired.id as u32, None);
+            match queue_present.submit(&*self.surface_q) {
+                Ok(()) => (),
+                Err(SubmitPresentError::OutOfDate) => {
+                    println!("submit: out of date!");
+                }
+                Err(e) => {
+                    println!("submit: {:?}", e);
+                }
             }
-            Err(e) => {
-                println!("Fence - Failed to flush future: {:?}", e);
-            }
+
+            frame.command_buffer = Some(command_buffer);
+            self.current_frame = (self.current_frame + 1) % self.frames_in_flight.len();
         }
     }
 
@@ -529,7 +604,31 @@ impl HelloTriangle {
     }
 }
 
+impl Drop for FrameInFlight {
+    fn drop(&mut self) {
+        if let Some(ref mut fence) = self.fence.as_mut() {
+            fence.wait(None).unwrap();
+            self.command_buffer.take();
+        }
+    }
+}
+
 fn main() {
     let (app, event_loop) = HelloTriangle::init();
     app.main_loop(event_loop);
+}
+
+mod shaders {
+    vulkano_shaders::shader! {
+        shaders: {
+            vertex: {
+                ty: "vertex",
+                path: "shaders/vertex.glsl",
+            },
+            fragment: {
+                ty: "fragment",
+                path: "shaders/fragment.glsl",
+            }
+        }
+    }
 }
