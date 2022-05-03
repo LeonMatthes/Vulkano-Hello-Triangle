@@ -1,5 +1,5 @@
 use smallvec::smallvec;
-use std::{iter, sync::Arc};
+use std::{iter, rc::Rc, sync::Arc};
 use vulkano::{
     command_buffer::{
         pool::standard::*, synced::*, PrimaryAutoCommandBuffer, PrimaryCommandBuffer,
@@ -16,17 +16,16 @@ use vulkano::{
     swapchain::*,
     sync::*,
 };
-use vulkano_win::VkSurfaceBuild;
-use winit::{
-    dpi::LogicalSize,
-    event::{Event, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+
+use sdl2::{
+    event::Event,
+    video::{VkInstance, Window, WindowContext},
+    EventPump,
 };
 
-const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
+// const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_KHRONOS_validation"];
 
-// const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_LUNARG_api_dump"];
+const VALIDATION_LAYERS: [&str; 1] = ["VK_LAYER_LUNARG_api_dump"];
 
 // const VALIDATION_LAYERS: [&str; 0] = [];
 
@@ -43,7 +42,7 @@ const DEVICE_EXTENSIONS: DeviceExtensions = DeviceExtensions {
 };
 
 struct SwapchainData {
-    swapchain: Arc<Swapchain<Window>>,
+    swapchain: Arc<Swapchain<()>>,
     framebuffers: Vec<Arc<Framebuffer>>,
     _render_pass: Arc<RenderPass>,
     pipeline: Arc<GraphicsPipeline>,
@@ -64,49 +63,17 @@ struct HelloTriangle {
     swapchain: SwapchainData,
     graphics_q: Arc<Queue>,
     surface_q: Arc<Queue>,
-    surface: Arc<Surface<Window>>,
+    _surface: Arc<Surface<()>>,
+    window: Window,
 }
 
 impl HelloTriangle {
-    fn recreate_swapchain(&mut self) {
-        let new_dimensions = self.surface.window().inner_size();
-        let (new_swapchain, new_images) =
-            match self.swapchain.swapchain.recreate(SwapchainCreateInfo {
-                image_extent: new_dimensions.into(),
-                ..self.swapchain.swapchain.create_info()
-            }) {
-                Ok(r) => r,
-                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => return,
-                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
-            };
-
-        self.swapchain = Self::swapchain_data(&self.device, new_swapchain, new_images);
-    }
-
-    fn swapchain_data(
-        device: &Arc<Device>,
-        swapchain: Arc<Swapchain<Window>>,
-        images: Vec<Arc<SwapchainImage<Window>>>,
-    ) -> SwapchainData {
-        let render_pass = Self::create_render_pass(device.clone(), &swapchain);
-        let pipeline =
-            Self::create_graphics_pipeline(device.clone(), swapchain.clone(), render_pass.clone());
-        let framebuffers = Self::create_framebuffers(&swapchain, &render_pass, images);
-
-        SwapchainData {
-            swapchain,
-            framebuffers,
-            _render_pass: render_pass,
-            pipeline,
-        }
-    }
-
-    pub fn init() -> (Self, EventLoop<()>) {
-        let instance = Self::create_instance();
-        let (events_loop, surface) = Self::init_window(instance.clone());
+    pub fn init() -> (Self, EventPump) {
+        let (window, event_pump) = Self::init_window();
+        let (instance, surface) = Self::create_instance(&window);
         let physical = Self::pick_physical_device(&instance, &surface);
         let (device, graphics_q, surface_q) = Self::create_device(physical, &surface);
-        let (swapchain, images) = Self::create_swapchain(&device, &surface);
+        let (swapchain, images) = Self::create_swapchain(&device, &surface, &window);
         let swapchain = Self::swapchain_data(&device, swapchain, images);
 
         let frames_in_flight = iter::from_fn(|| {
@@ -125,32 +92,47 @@ impl HelloTriangle {
                 frames_in_flight,
                 current_frame: 0,
 
+                window,
                 device,
                 swapchain,
                 graphics_q,
                 surface_q,
-                surface,
+                _surface: surface,
             },
-            events_loop,
+            event_pump,
         )
     }
 
-    fn init_window(instance: Arc<Instance>) -> (EventLoop<()>, Arc<Surface<Window>>) {
-        let event_loop = EventLoop::new();
-        let surface = WindowBuilder::new()
-            .with_title("Vulkan")
-            .with_inner_size(LogicalSize::new(1280.0, 720.0))
-            .build_vk_surface(&event_loop, instance)
+    fn init_window() -> (Window, sdl2::EventPump) {
+        let sdl_context = sdl2::init().unwrap();
+        let video_subsystem = sdl_context.video().unwrap();
+        let window = video_subsystem
+            .window("Vulkan", 1280, 720)
+            .resizable()
+            .vulkan()
+            .build()
             .unwrap();
-        (event_loop, surface)
+
+        (window, sdl_context.event_pump().unwrap())
     }
 
-    fn create_instance() -> Arc<Instance> {
+    fn create_instance(window: &Window) -> (Arc<Instance>, Arc<Surface<()>>) {
+        use std::ffi::CString;
+        use vulkano::{Handle, VulkanObject};
+
         let supported_extensions = InstanceExtensions::supported_by_core()
             .expect("failed to retrieve supported extensions!");
         println!("Supported extensions: {:?}", supported_extensions);
 
-        let required_extensions = vulkano_win::required_extensions();
+        let required_extensions: Vec<_> = window
+            .vulkan_instance_extensions()
+            .unwrap()
+            .iter()
+            .map(|&v| CString::new(v).unwrap())
+            .collect();
+        let required_extensions =
+            InstanceExtensions::from(required_extensions.iter().map(AsRef::as_ref));
+
         let mut create_info = InstanceCreateInfo::application_from_cargo_toml();
         create_info.enabled_extensions = required_extensions;
 
@@ -159,12 +141,27 @@ impl HelloTriangle {
                 VALIDATION_LAYERS.iter().map(|s| (*s).to_owned()).collect();
         }
 
-        Instance::new(create_info).expect("Failed to create Vulkan instance")
+        let instance = Instance::new(create_info).expect("Failed to create Vulkan instance");
+
+        let surface_handle = window
+            .vulkan_create_surface(instance.internal_object().as_raw() as VkInstance)
+            .unwrap();
+
+        let surface = unsafe {
+            Surface::from_raw_surface(
+                instance.clone(),
+                Handle::from_raw(surface_handle),
+                SurfaceApi::DisplayPlane,
+                (),
+            )
+        };
+
+        (instance, Arc::new(surface))
     }
 
     fn pick_physical_device<'a>(
         instance: &'a Arc<Instance>,
-        surface: &Arc<Surface<Window>>,
+        surface: &Arc<Surface<()>>,
     ) -> PhysicalDevice<'a> {
         use vulkano::device::Features;
 
@@ -209,7 +206,7 @@ impl HelloTriangle {
 
     fn find_queue_families<'a>(
         physical: PhysicalDevice<'a>,
-        surface: &Arc<Surface<Window>>,
+        surface: &Arc<Surface<()>>,
     ) -> (QueueFamily<'a>, QueueFamily<'a>) {
         let graphics_family = physical
             .queue_families()
@@ -226,7 +223,7 @@ impl HelloTriangle {
 
     fn create_device<'a>(
         physical: PhysicalDevice<'a>,
-        surface: &Arc<Surface<Window>>,
+        surface: &Arc<Surface<()>>,
     ) -> (Arc<Device>, Arc<Queue>, Arc<Queue>) {
         use vulkano::device::QueueCreateInfo;
 
@@ -271,9 +268,10 @@ impl HelloTriangle {
 
     fn create_swapchain(
         device: &Arc<Device>,
-        surface: &Arc<Surface<Window>>,
-    ) -> (Arc<Swapchain<Window>>, Vec<Arc<SwapchainImage<Window>>>) {
-        use vulkano::{format::Format, image::ImageUsage, sync::Sharing};
+        surface: &Arc<Surface<()>>,
+        window: &Window,
+    ) -> (Arc<Swapchain<()>>, Vec<Arc<SwapchainImage<()>>>) {
+        use vulkano::{format::Format, image::ImageUsage};
 
         let physical = device.physical_device();
 
@@ -297,7 +295,7 @@ impl HelloTriangle {
         let surface_capabilities = physical
             .surface_capabilities(&surface, Default::default())
             .expect("No surface capabilities!");
-        let dimensions = surface.window().inner_size();
+        let dimensions = window.vulkan_drawable_size();
 
         let min_image_count = (surface_capabilities.min_image_count + 1).min(
             surface_capabilities
@@ -320,7 +318,7 @@ impl HelloTriangle {
                 min_image_count,
                 image_format: Some(*image_format),
                 image_color_space: *color_space,
-                image_extent: dimensions.into(),
+                image_extent: [dimensions.0, dimensions.1],
                 image_usage: ImageUsage::color_attachment(),
                 image_sharing,
                 present_mode,
@@ -332,10 +330,40 @@ impl HelloTriangle {
         (swapchain, images)
     }
 
-    fn create_render_pass(
-        device: Arc<Device>,
-        swapchain: &Arc<Swapchain<Window>>,
-    ) -> Arc<RenderPass> {
+    fn recreate_swapchain(&mut self) {
+        let new_dimensions = self.window.vulkan_drawable_size();
+        let (new_swapchain, new_images) =
+            match self.swapchain.swapchain.recreate(SwapchainCreateInfo {
+                image_extent: [new_dimensions.0, new_dimensions.1],
+                ..self.swapchain.swapchain.create_info()
+            }) {
+                Ok(r) => r,
+                Err(SwapchainCreationError::ImageExtentNotSupported { .. }) => return,
+                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
+            };
+
+        self.swapchain = Self::swapchain_data(&self.device, new_swapchain, new_images);
+    }
+
+    fn swapchain_data(
+        device: &Arc<Device>,
+        swapchain: Arc<Swapchain<()>>,
+        images: Vec<Arc<SwapchainImage<()>>>,
+    ) -> SwapchainData {
+        let render_pass = Self::create_render_pass(device.clone(), &swapchain);
+        let pipeline =
+            Self::create_graphics_pipeline(device.clone(), swapchain.clone(), render_pass.clone());
+        let framebuffers = Self::create_framebuffers(&swapchain, &render_pass, images);
+
+        SwapchainData {
+            swapchain,
+            framebuffers,
+            _render_pass: render_pass,
+            pipeline,
+        }
+    }
+
+    fn create_render_pass(device: Arc<Device>, swapchain: &Arc<Swapchain<()>>) -> Arc<RenderPass> {
         use vulkano::{
             image::ImageLayout,
             render_pass::{
@@ -376,7 +404,7 @@ impl HelloTriangle {
 
     fn create_graphics_pipeline(
         device: Arc<Device>,
-        swapchain: Arc<Swapchain<Window>>,
+        swapchain: Arc<Swapchain<()>>,
         render_pass: Arc<RenderPass>,
     ) -> Arc<GraphicsPipeline> {
         use vulkano::{
@@ -423,9 +451,9 @@ impl HelloTriangle {
     }
 
     fn create_framebuffers(
-        swapchain: &Arc<Swapchain<Window>>,
+        swapchain: &Arc<Swapchain<()>>,
         render_pass: &Arc<RenderPass>,
-        images: Vec<Arc<SwapchainImage<Window>>>,
+        images: Vec<Arc<SwapchainImage<()>>>,
     ) -> Vec<Arc<Framebuffer>> {
         use vulkano::image::view::ImageView;
 
@@ -614,25 +642,22 @@ impl HelloTriangle {
         }
     }
 
-    pub fn main_loop(mut self, event_loop: EventLoop<()>) {
-        event_loop.run(move |event, _, control_flow| match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
+    pub fn main_loop(mut self, mut event_pump: EventPump) {
+        'running: loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    Event::Quit { .. } => break 'running,
+                    _ => {}
+                }
             }
-            Event::WindowEvent {
-                event: WindowEvent::Resized(..),
-                ..
-            } => {
-                println!("Resize");
+            self.draw_frame();
+        }
+
+        for frame in &mut self.frames_in_flight {
+            if let Some(fence) = frame.fence.as_mut() {
+                fence.wait(None).unwrap();
             }
-            Event::MainEventsCleared => {
-                self.draw_frame();
-            }
-            _ => (),
-        });
+        }
     }
 }
 
